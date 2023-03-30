@@ -24,10 +24,11 @@
 #include <pcl/search/kdtree.h>
 #include <pcl/filters/voxel_grid.h>
 
+#include "utility.hpp"
 #include "base.hpp"
 #include "Stage1.hpp"
-// #include "Stage2.hpp"
-// #include "Stage3.hpp"
+#include "Stage2.hpp"
+#include "Stage3.hpp"
 // #include "Stage4.hpp"
 // #include "Stage5.hpp"
 
@@ -115,11 +116,17 @@ int main()
 {
     std::string prev_filename = "/mnt/m2_ssd/PC_Concealment/experiments_ssd/loot_vox10_ai/no_drop/loot_vox10_ai_dec_1000.ply";
     std::string next_filename = "/mnt/m2_ssd/PC_Concealment/experiments_ssd/loot_vox10_ai/no_drop/loot_vox10_ai_dec_1003.ply";
-    Pipeline_Object my_obj(prev_filename, next_filename, 0.5);
+    Pipeline_Object my_obj(prev_filename, next_filename, 0.5, 1024);
 
 
     Stage1_None my_stage1;
     my_stage1.run(my_obj);
+
+    Stage2_Nearest_Neighbor my_stage2(1);
+    my_stage2.run(my_obj);
+
+    Stage3_Cube_Estimation my_stage3(1, 128);
+    my_stage3.run(my_obj);
 
     // Pipeline my_pipeline;
 

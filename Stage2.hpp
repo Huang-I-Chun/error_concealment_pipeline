@@ -1,14 +1,30 @@
 // Matching
 
-class Stage2_None: public Stage
+class Stage2_Nearest_Neighbor: public Stage
 {
 private:
+    int mode; // 1 for ds1_point_cloud, 2 for ds2_point_cloud
+
+
 public:
 
-    Stage2_None(){
+    Stage2_Nearest_Neighbor(int my_mode): mode(my_mode){
     }
 
     void run(Pipeline_Object& pipeline_obj){
+
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr ds_prev_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr ds_next_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+        if(mode == 1){
+            ds_prev_cloud = pipeline_obj.ds1_prev_cloud;
+            ds_next_cloud = pipeline_obj.ds1_next_cloud;
+        }
+        else if(mode == 2){
+            ds_prev_cloud = pipeline_obj.ds2_prev_cloud;
+            ds_next_cloud = pipeline_obj.ds2_next_cloud;
+        }
+
         // will save downsample point cloud match to another downsample point cloud
         std::vector<int> nearest_search_result; // use nearest_search_result[ds_NEXT_FRAME_POINT_INDEX] = ds_PREV_FRAME_POINT_INDEX
         for (int idx = 0; idx < ds_next_cloud->points.size() + 2; idx++)

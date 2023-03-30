@@ -1,6 +1,7 @@
 class Pipeline_Object{
 public:
     double temporal_index; // should be 0 - 1
+    double resolution; // height of the point cloud
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr readfile_prev_cloud; // input origin point cloud
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr readfile_next_cloud; // input origin point cloud
@@ -17,6 +18,8 @@ public:
 
     // Stage 3 Motion Estimation: Motion estimation per point/center
     std::vector<std::vector<int>> motion_estimation;
+    int cube_length;
+    std::vector<std::vector<double>> non_empty_block_vector; // each element have six number, which is the vector of x y z r g b
 
     // Stage 4 Prediction:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr predict_point_cloud;
@@ -24,8 +27,9 @@ public:
     // Stage 5 Post-Processing:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr new_cloud; // output point cloud
 
-    Pipeline_Object(std::string prev_filename, std::string next_filename, double t): 
+    Pipeline_Object(std::string prev_filename, std::string next_filename, double t, double res): 
     temporal_index(t),
+    resolution(res),
     readfile_prev_cloud(new pcl::PointCloud< pcl::PointXYZRGB>),
     readfile_next_cloud(new pcl::PointCloud< pcl::PointXYZRGB>),
     ds1_prev_cloud(new pcl::PointCloud< pcl::PointXYZRGB>),
@@ -71,10 +75,4 @@ public:
 	}
 };
 
-void read_ply_file(Pipeline_Object& pipeline_obj, std::string prev_filename, std::string next_filename){
-    if (pcl::io::loadPLYFile<pcl::PointXYZRGB>(prev_filename, *pipeline_obj.readfile_prev_cloud) == -1 || pcl::io::loadPLYFile<pcl::PointXYZRGB>(next_filename, *pipeline_obj.readfile_next_cloud) == -1) //* load the file
-    {
-        PCL_ERROR("Couldn't read file ply or pcd file \n");
-        return;
-    }
-}
+
