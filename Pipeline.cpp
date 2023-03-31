@@ -29,8 +29,8 @@
 #include "Stage1.hpp"
 #include "Stage2.hpp"
 #include "Stage3.hpp"
-// #include "Stage4.hpp"
-// #include "Stage5.hpp"
+#include "Stage4.hpp"
+#include "Stage5.hpp"
 
 // class Pipeline
 // {
@@ -114,8 +114,8 @@
 
 int main()
 {
-    std::string prev_filename = "/mnt/m2_ssd/PC_Concealment/experiments_ssd/loot_vox10_ai/no_drop/loot_vox10_ai_dec_1000.ply";
-    std::string next_filename = "/mnt/m2_ssd/PC_Concealment/experiments_ssd/loot_vox10_ai/no_drop/loot_vox10_ai_dec_1003.ply";
+    std::string prev_filename = "/mnt/m2_ssd/PC_Concealment/experiments_ssd/longdress_vox10_ai/no_drop/longdress_vox10_ai_dec_1051.ply";
+    std::string next_filename = "/mnt/m2_ssd/PC_Concealment/experiments_ssd/longdress_vox10_ai/no_drop/longdress_vox10_ai_dec_1055.ply";
     Pipeline_Object my_obj(prev_filename, next_filename, 0.5, 1024);
 
 
@@ -127,6 +127,12 @@ int main()
 
     Stage3_Cube_Estimation my_stage3(1, 128);
     my_stage3.run(my_obj);
+
+    Stage4_Cube_Estimation my_stage4(1, 1);
+    my_stage4.run(my_obj);
+
+    Stage5_None my_stage5("output.ply");
+    my_stage5.run(my_obj);
 
     // Pipeline my_pipeline;
 
