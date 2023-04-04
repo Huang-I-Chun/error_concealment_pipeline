@@ -1,29 +1,31 @@
 // Motion Estimation
 
-class Stage3_Cube_Estimation: public Stage
+class Stage3_Cube_Estimation : public Stage
 {
 private:
     int mode; // 1 for ds1_point_cloud, 2 for ds2_point_cloud
     int cube_length;
 
 public:
-
-    Stage3_Cube_Estimation(int my_mode, int my_cube_length): mode(my_mode), cube_length(my_cube_length){
-
+    Stage3_Cube_Estimation(int my_mode, int my_cube_length) : mode(my_mode), cube_length(my_cube_length)
+    {
     }
 
-    void run(Pipeline_Object& pipeline_obj){
+    void run(Pipeline_Object &pipeline_obj)
+    {
 
         pipeline_obj.cube_length = cube_length;
 
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr ds_prev_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr ds_next_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
-        if(mode == 1){
+        if (mode == 1)
+        {
             ds_prev_cloud = pipeline_obj.ds1_prev_cloud;
             ds_next_cloud = pipeline_obj.ds1_next_cloud;
         }
-        else if(mode == 2){
+        else if (mode == 2)
+        {
             ds_prev_cloud = pipeline_obj.ds2_prev_cloud;
             ds_next_cloud = pipeline_obj.ds2_next_cloud;
         }
@@ -41,13 +43,12 @@ public:
             }
         }
 
-        
         for (int w = 0; w < ds_next_cloud->points.size(); w++)
         {
             ds_block_list[MyPoint(find_center(ds_next_cloud->points[w].x, cube_length), find_center(ds_next_cloud->points[w].y, cube_length), find_center(ds_next_cloud->points[w].z, cube_length))].push_back(w);
         }
 
-        std::vector<MyPoint> non_empty_block_center;             // save those center points which query points > 10
+        std::vector<MyPoint> non_empty_block_center; // save those center points which query points > 10
 
         for (int x = cube_length / 2; x < pipeline_obj.resolution; x += cube_length)
         {
@@ -92,10 +93,12 @@ public:
                 }
             }
         }
+
+        if (_next != NULL)
+        {
+            _next->run(pipeline_obj);
+        }
     }
-
-
-
 };
 
 // class Stage3_Point_Estimation

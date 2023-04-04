@@ -1,7 +1,8 @@
-class Pipeline_Object{
+class Pipeline_Object
+{
 public:
     double temporal_index; // should be 0 - 1
-    double resolution; // height of the point cloud
+    double resolution;     // height of the point cloud
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr readfile_prev_cloud; // input origin point cloud
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr readfile_next_cloud; // input origin point cloud
@@ -14,7 +15,7 @@ public:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr ds2_next_cloud; // using downsample2
 
     // Stage 2 Matching: Obtain matching table
-    std::vector<int> matching_table;
+    std::vector<int> matching_table; // use nearest_search_result[ds_NEXT_FRAME_POINT_INDEX] = ds_PREV_FRAME_POINT_INDEX
 
     // Stage 3 Motion Estimation: Motion estimation per point/center
     std::vector<std::vector<int>> motion_estimation;
@@ -27,18 +28,17 @@ public:
     // Stage 5 Post-Processing:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr new_cloud; // output point cloud
 
-    Pipeline_Object(std::string prev_filename, std::string next_filename, double t, double res): 
-    temporal_index(t),
-    resolution(res),
-    readfile_prev_cloud(new pcl::PointCloud< pcl::PointXYZRGB>),
-    readfile_next_cloud(new pcl::PointCloud< pcl::PointXYZRGB>),
-    ds1_prev_cloud(new pcl::PointCloud< pcl::PointXYZRGB>),
-    ds1_next_cloud(new pcl::PointCloud< pcl::PointXYZRGB>),
-    ds2_prev_cloud(new pcl::PointCloud< pcl::PointXYZRGB>),
-    ds2_next_cloud(new pcl::PointCloud< pcl::PointXYZRGB>),
-    predict_point_cloud(new pcl::PointCloud< pcl::PointXYZRGB>),
-    new_cloud(new pcl::PointCloud< pcl::PointXYZRGB>)
-    {   
+    Pipeline_Object(std::string prev_filename, std::string next_filename, double t, double res) : temporal_index(t),
+                                                                                                  resolution(res),
+                                                                                                  readfile_prev_cloud(new pcl::PointCloud<pcl::PointXYZRGB>),
+                                                                                                  readfile_next_cloud(new pcl::PointCloud<pcl::PointXYZRGB>),
+                                                                                                  ds1_prev_cloud(new pcl::PointCloud<pcl::PointXYZRGB>),
+                                                                                                  ds1_next_cloud(new pcl::PointCloud<pcl::PointXYZRGB>),
+                                                                                                  ds2_prev_cloud(new pcl::PointCloud<pcl::PointXYZRGB>),
+                                                                                                  ds2_next_cloud(new pcl::PointCloud<pcl::PointXYZRGB>),
+                                                                                                  predict_point_cloud(new pcl::PointCloud<pcl::PointXYZRGB>),
+                                                                                                  new_cloud(new pcl::PointCloud<pcl::PointXYZRGB>)
+    {
         if (temporal_index < 0.5)
         {
             std::string tmp;
@@ -64,15 +64,15 @@ private:
 public:
     Stage *_next;
 
-    Stage(){
+    Stage()
+    {
         _next = NULL;
     }
 
-    virtual void run(Pipeline_Object& pipeline_obj) = 0;
+    virtual void run(Pipeline_Object &pipeline_obj) = 0;
 
- 	void connect(Stage *nextstage) {
-		_next = nextstage;
-	}
+    void connect(Stage *nextstage)
+    {
+        _next = nextstage;
+    }
 };
-
-

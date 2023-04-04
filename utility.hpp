@@ -60,3 +60,66 @@ std::vector<int> sort_indexes(const std::vector<std::vector<double>> &v)
 
     return idx;
 }
+
+class MyMatching
+{
+    // 宣告 public 成員
+public:
+    std::vector<int> match_idx_list;
+    std::vector<float> match_dist_list;
+};
+
+
+bool from_prev_or_next(pcl::PointCloud<pcl::PointXYZRGB>::Ptr prev_cloud, pcl::PointCloud<pcl::PointXYZRGB>::Ptr next_cloud)
+{
+    std::vector<int> nearest_search_result_next_to_prev; // use nearest_search_result_next_to_prev[NEXT_FRAME_POINT_INDEX] = PREV_FRAME_POINT_INDEX
+    std::vector<int> nearest_search_result_prev_to_next; // use nearest_search_result_prev_to_next[PREV_FRAME_POINT_INDEX] = NEXT_FRAME_POINT_INDEX
+
+    for (int idx = 0; idx < next_cloud->points.size(); idx++)
+    {
+        nearest_search_result_next_to_prev.push_back(-1);
+    }
+
+    for (int idx = 0; idx < prev_cloud->points.size(); idx++)
+    {
+        nearest_search_result_prev_to_next.push_back(-1);
+    }
+
+    pcl::search::KdTree<pcl::PointXYZRGB> prev_kdtree;
+    prev_kdtree.setInputCloud(prev_cloud);
+
+    pcl::search::KdTree<pcl::PointXYZRGB> next_kdtree;
+    next_kdtree.setInputCloud(next_cloud);
+
+    // first we iterate through all next frame points to query nearest point; which means we find matching point-pairs first
+    double avg_next_to_prev_dist = 0.0;
+    for (int idx = 0; idx < next_cloud->points.size(); idx++)
+    {
+        std::vector<int> prev_pointIdxRadiusSearch;
+        std::vector<float> prev_pointRadiusSquaredDistance;
+        prev_kdtree.nearestKSearch(next_cloud->points[idx], 1, prev_pointIdxRadiusSearch, prev_pointRadiusSquaredDistance);
+        nearest_search_result_next_to_prev[idx] = prev_pointIdxRadiusSearch[0];
+        avg_next_to_prev_dist += prev_pointRadiusSquaredDistance[0];
+    }
+
+    avg_next_to_prev_dist = avg_next_to_prev_dist / next_cloud->points.size();
+
+    double avg_prev_to_next_dist = 0.0;
+    for (int idx = 0; idx < prev_cloud->points.size(); idx++)
+    {
+        std::vector<int> prev_pointIdxRadiusSearch;
+        std::vector<float> prev_pointRadiusSquaredDistance;
+        next_kdtree.nearestKSearch(prev_cloud->points[idx], 1, prev_pointIdxRadiusSearch, prev_pointRadiusSquaredDistance);
+        nearest_search_result_prev_to_next[idx] = prev_pointIdxRadiusSearch[0];
+        avg_prev_to_next_dist += prev_pointRadiusSquaredDistance[0];
+    }
+    avg_prev_to_next_dist /= next_cloud->points.size();
+    if (avg_next_to_prev_dist > avg_prev_to_next_dist)
+    {
+        return true; // next search prev
+    }
+    else
+    {
+        return false; // prev search next
+    }
+}

@@ -1,27 +1,29 @@
 // Prediction
 
-
-class Stage4_Cube_Estimation: public Stage
+class Stage4_Cube_Estimation : public Stage
 {
 private:
     int mode; // 1 for ds1_point_cloud, 2 for ds2_point_cloud
     int iterate_round;
 
 public:
-    Stage4_Cube_Estimation(int my_mode, int my_iterate_round): mode(my_mode), iterate_round(my_iterate_round){
-
+    Stage4_Cube_Estimation(int my_mode, int my_iterate_round) : mode(my_mode), iterate_round(my_iterate_round)
+    {
     }
 
-    void run(Pipeline_Object& pipeline_obj){
+    void run(Pipeline_Object &pipeline_obj)
+    {
 
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr prev_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr next_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
-        if(mode == 1){
+        if (mode == 1)
+        {
             prev_cloud = pipeline_obj.ds1_prev_cloud;
             next_cloud = pipeline_obj.ds1_next_cloud;
         }
-        else if(mode == 2){
+        else if (mode == 2)
+        {
             prev_cloud = pipeline_obj.ds2_prev_cloud;
             next_cloud = pipeline_obj.ds2_next_cloud;
         }
@@ -44,7 +46,7 @@ public:
             ds_block_list[MyPoint(find_center(next_cloud->points[w].x, pipeline_obj.cube_length), find_center(next_cloud->points[w].y, pipeline_obj.cube_length), find_center(next_cloud->points[w].z, pipeline_obj.cube_length))].push_back(w);
         }
 
-        std::vector<MyPoint> non_empty_block_center;             // save those center points which query points > 10
+        std::vector<MyPoint> non_empty_block_center; // save those center points which query points > 10
 
         for (int x = pipeline_obj.cube_length / 2; x < pipeline_obj.resolution; x += pipeline_obj.cube_length)
         {
@@ -60,7 +62,6 @@ public:
             }
         }
 
-
         // block_list will use in prediction
         std::map<MyPoint, std::vector<int>, MyPointCompare> block_list; // key: point xyz, value: query point index
 
@@ -75,16 +76,14 @@ public:
             }
         }
 
-
         for (int w = 0; w < next_cloud->points.size(); w++)
         {
             block_list[MyPoint(find_center(next_cloud->points[w].x, pipeline_obj.cube_length), find_center(next_cloud->points[w].y, pipeline_obj.cube_length), find_center(next_cloud->points[w].z, pipeline_obj.cube_length))].push_back(w);
         }
-        
 
         int round = 0;
         std::vector<double> old_length_multiplier;
-        for(int i = 0; i < non_empty_block_center.size(); i++)
+        for (int i = 0; i < non_empty_block_center.size(); i++)
         {
             old_length_multiplier.push_back(1.0);
         }
@@ -247,8 +246,8 @@ public:
                     prev_pointIdxRadiusSearch.push_back(pipeline_obj.matching_table[block_list[non_empty_block_center[i]][idx]]);
 
                     double distance_reciprocal = 1.0 / (sqrt(pow(next_cloud->points[block_list[non_empty_block_center[i]][idx]].x - prev_cloud->points[prev_pointIdxRadiusSearch[0]].x, 2) +
-                                                            pow(next_cloud->points[block_list[non_empty_block_center[i]][idx]].y - prev_cloud->points[prev_pointIdxRadiusSearch[0]].y, 2) +
-                                                            pow(next_cloud->points[block_list[non_empty_block_center[i]][idx]].z - prev_cloud->points[prev_pointIdxRadiusSearch[0]].z, 2)) +
+                                                             pow(next_cloud->points[block_list[non_empty_block_center[i]][idx]].y - prev_cloud->points[prev_pointIdxRadiusSearch[0]].y, 2) +
+                                                             pow(next_cloud->points[block_list[non_empty_block_center[i]][idx]].z - prev_cloud->points[prev_pointIdxRadiusSearch[0]].z, 2)) +
                                                         pipeline_obj.cube_length / 2);
                     distance_reciprocal = 1;
                     denominator += distance_reciprocal;
@@ -256,7 +255,6 @@ public:
                     vector_x += distance_reciprocal * (next_cloud->points[block_list[non_empty_block_center[i]][idx]].x - (pipeline_obj.temporal_index * next_cloud->points[block_list[non_empty_block_center[i]][idx]].x + (1 - pipeline_obj.temporal_index) * prev_cloud->points[prev_pointIdxRadiusSearch[0]].x));
                     vector_y += distance_reciprocal * (next_cloud->points[block_list[non_empty_block_center[i]][idx]].y - (pipeline_obj.temporal_index * next_cloud->points[block_list[non_empty_block_center[i]][idx]].y + (1 - pipeline_obj.temporal_index) * prev_cloud->points[prev_pointIdxRadiusSearch[0]].y));
                     vector_z += distance_reciprocal * (next_cloud->points[block_list[non_empty_block_center[i]][idx]].z - (pipeline_obj.temporal_index * next_cloud->points[block_list[non_empty_block_center[i]][idx]].z + (1 - pipeline_obj.temporal_index) * prev_cloud->points[prev_pointIdxRadiusSearch[0]].z));
-
                 }
 
                 vector_x = vector_x / block_list[non_empty_block_center[i]].size();
@@ -289,8 +287,6 @@ public:
                 pipeline_obj.non_empty_block_vector.push_back(temp);
             }
 
-
-
             // std::cout << output_filename.substr(0, output_filename.size() - 4) + "_" + std::string(number) + ".ply" << std::endl;
             // pcl::io::savePLYFileASCII(output_filename.substr(0, output_filename.size() - 4) + "_" + std::string(number) + ".ply", *pipeline_obj.predict_point_cloud);
             if (round == iterate_round - 1)
@@ -303,8 +299,12 @@ public:
                 break;
             }
         }
-    }
 
+        if (_next != NULL)
+        {
+            _next->run(pipeline_obj);
+        }
+    }
 };
 
 // class Stage4_PB // point based
