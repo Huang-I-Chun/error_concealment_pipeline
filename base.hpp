@@ -18,7 +18,7 @@ public:
     std::vector<int> matching_table; // use nearest_search_result[ds_NEXT_FRAME_POINT_INDEX] = ds_PREV_FRAME_POINT_INDEX
 
     // Stage 3 Motion Estimation: Motion estimation per point/center
-    std::vector<std::vector<int>> motion_estimation;
+    std::vector<std::vector<double>> motion_estimation;
     int cube_length;
     std::vector<std::vector<double>> non_empty_block_vector; // each element have six number, which is the vector of x y z r g b
 

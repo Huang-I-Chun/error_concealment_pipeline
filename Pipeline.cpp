@@ -35,7 +35,7 @@
 
 void pipeline(Stage *stages[], Pipeline_Object &pipeline_obj)
 {
-    int i;
+    int i = 0;
     for (i = 0; i < 4; i++)
     {
         stages[i]->connect(stages[i + 1]);
@@ -48,6 +48,7 @@ int main()
 {
     Pipeline_Object my_obj(prev_filename, next_filename, temporal_index, resolution);
 
+    // my_stage1, my_stage2, my_stage3, my_stage4, my_stage5
     Stage *stages[] = {my_stage1, my_stage2, my_stage3, my_stage4, my_stage5};
 
     pipeline(stages, my_obj);

@@ -63,7 +63,6 @@ public:
 
     void run(Pipeline_Object &pipeline_obj)
     {
-
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr ds_prev_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr ds_next_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
@@ -253,6 +252,10 @@ public:
             sor2.setLeafSize(voxel_length, voxel_length, voxel_length);
             sor2.filter(*skelton_next_cloud);
 
+            // pcl::io::savePLYFileASCII("skelton_prev_cloud.ply", *skelton_prev_cloud);
+            // pcl::io::savePLYFileASCII("skelton_next_cloud.ply", *skelton_next_cloud);
+            // exit(0);
+
             // for each point in next_cloud, we will find the nn in skelton_next_cloud;'
             std::vector<int> next_cloud_nn_skelton_idx;
             for (int idx = 0; idx < next_cloud->points.size(); idx++)
@@ -328,6 +331,10 @@ public:
                 std::vector<float> nearest_dist;
                 kmeans_kdtrees[matching_idx].nearestKSearch(next_cloud->points[idx], 1, nearest_idx, nearest_dist);
 
+                // std::vector<int> nearest_idx;
+                // std::vector<float> nearest_dist;
+                // prev_kdtree.nearestKSearch(next_cloud->points[idx], 1, nearest_idx, nearest_dist);
+
                 next_nn_idx.push_back(nearest_idx[0]);
                 next_nn_distance.push_back(nearest_dist[0]);
 
@@ -335,6 +342,10 @@ public:
                 {
                     next_skelton_search_radius[next_cloud_nn_skelton_idx[idx]] = nearest_dist[0];
                 }
+
+                // skelton_point_mv[next_cloud_nn_skelton_idx[nearest_idx2[0]]].x += prev_cloud->points[nearest_idx2[0]].x - next_cloud->points[idx].x;
+                // skelton_point_mv[next_cloud_nn_skelton_idx[nearest_idx2[0]]].y += prev_cloud->points[nearest_idx2[0]].y - next_cloud->points[idx].y;
+                // skelton_point_mv[next_cloud_nn_skelton_idx[nearest_idx2[0]]].z += prev_cloud->points[nearest_idx2[0]].z - next_cloud->points[idx].z;
             }
 
             std::vector<double> nn_distance;
@@ -352,12 +363,16 @@ public:
                         [&nn_distance](int i1, int i2)
                         { return nn_distance[i1] < nn_distance[i2]; });
 
+            // find matching within a radius
+            // std::vector<MyMatching> query_result;
+
             for (auto idx : sort_idx)
             {
                 MyMatching temp;
                 std::vector<int> prev_pointIdxRadiusSearch;
                 std::vector<float> prev_pointRadiusSquaredDistance;
 
+                // float search_radius = nn_distance[idx];
                 float search_radius = next_skelton_search_radius[next_cloud_nn_skelton_idx[idx]];
                 // magnification
                 prev_kdtree.radiusSearchT(next_cloud->points[idx], double(magnification * search_radius + 1), prev_pointIdxRadiusSearch, prev_pointRadiusSquaredDistance);
@@ -372,28 +387,28 @@ public:
                         temp.match_dist_list.push_back(prev_pointRadiusSquaredDistance[i]);
                     }
                 }
-
+                // std::cout << temp.match_idx_list.size() << std::endl;
                 if (temp.match_idx_list.size() == 0)
                 {
+                    prev_kdtree.nearestKSearch(next_cloud->points[idx], 1, prev_pointIdxRadiusSearch, prev_pointRadiusSquaredDistance);
                     temp.match_idx_list.push_back(prev_pointIdxRadiusSearch[0]);
                     temp.match_dist_list.push_back(prev_pointRadiusSquaredDistance[0]);
                 }
 
                 double min_distance = -1;
                 int matching_idx = -1;
-                double new_gamma = 0.00721688;
-                double utility_alpha = 0.9;
-                double utility_beta = 0.1;
 
                 for (int i = 0; i < temp.match_idx_list.size(); i++)
                 {
                     double cur_color_dist = sqrt(pow(((int)prev_cloud->points[temp.match_idx_list[i]].r - next_cloud->points[idx].r), 2) +
                                                  pow(((int)prev_cloud->points[temp.match_idx_list[i]].g - next_cloud->points[idx].g), 2) +
                                                  pow(((int)prev_cloud->points[temp.match_idx_list[i]].b - next_cloud->points[idx].b), 2));
+                    double new_gamma = 0.00721688;
 
-                    double cur_total_dist = utility_alpha * sqrt(temp.match_dist_list[i]) +
-                                            utility_beta * cur_color_dist +
+                    double cur_total_dist = 0.000511936 * sqrt(temp.match_dist_list[i]) +
+                                            0.000225527 * cur_color_dist +
                                             new_gamma * match_time[temp.match_idx_list[i]];
+                    // double cur_total_dist = 0.4 * sqrt(temp.match_dist_list[i]) / nn_distance[idx] + 0.2 * match_time[temp.match_idx_list[i]];
 
                     if (min_distance > cur_total_dist || min_distance < 0)
                     {
@@ -407,41 +422,191 @@ public:
 
                 pipeline_obj.matching_table[idx] = matching_idx;
             }
+
+            // convert the matching list back to next match to prev
+            std::vector<int> convert_list;
+            if (!use_next_search_prev)
+            {
+                for (int idx = 0; idx < ds_next_cloud->points.size(); idx++)
+                {
+                    convert_list.push_back(-1);
+                }
+
+                for (int i = 0; i < ds_next_cloud->points.size(); i++)
+                {
+                    if (pipeline_obj.matching_table[i] < ds_next_cloud->points.size())
+                    {
+                        convert_list[pipeline_obj.matching_table[i]] = i;
+                    }
+                }
+                // return 0;
+                pipeline_obj.matching_table.clear();
+
+                for (int idx = 0; idx < ds_next_cloud->points.size(); idx++)
+                {
+                    // std::cout << convert_list[idx] << std::endl;
+                    if (convert_list[idx] < ds_prev_cloud->points.size())
+                    {
+                        pipeline_obj.matching_table.push_back(convert_list[idx]);
+                    }
+                    else
+                    {
+                        pipeline_obj.matching_table.push_back(-1);
+                        // std::cout << "!!!!!";
+                    }
+                }
+
+                pcl::PointCloud<pcl::PointXYZRGB>::Ptr has_matching_pointcloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+                std::vector<int> has_matching_point_matching_list;
+                for (int idx = 0; idx < pipeline_obj.matching_table.size(); idx++)
+                {
+                    if (pipeline_obj.matching_table[idx] != -1)
+                    {
+                        has_matching_pointcloud->push_back(ds_next_cloud->points[idx]);
+                        has_matching_point_matching_list.push_back(pipeline_obj.matching_table[idx]);
+                    }
+                }
+
+                pcl::search::KdTree<pcl::PointXYZRGB> has_matching_kdtree;
+                has_matching_kdtree.setInputCloud(has_matching_pointcloud);
+
+                for (int idx = 0; idx < pipeline_obj.matching_table.size(); idx++)
+                {
+                    if (pipeline_obj.matching_table[idx] == -1)
+                    {
+                        std::vector<int> nearest_idx;
+                        std::vector<float> nearest_dist;
+                        has_matching_kdtree.nearestKSearch(ds_next_cloud->points[idx], 1, nearest_idx, nearest_dist);
+                        pipeline_obj.matching_table[idx] = has_matching_point_matching_list[nearest_idx[0]];
+                    }
+                }
+            }
+        }
+
+        if (_next != NULL)
+        {
+            _next->run(pipeline_obj);
         }
     }
 };
 
-// class Stage2_NN
-// {
-// private:
-// public:
-//     double resolution = 1024; // initial resolution, actually, this is the height of point cloud
+class Stage2_Query_Radius : public Stage
+{
+private:
+    int mode; // 1 for ds1_point_cloud, 2 for ds2_point_cloud
+    double radius;
 
-//     void run(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &prev_cloud,
-//              const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &next_cloud,
-//              std::vector<int> &matching_table);
-// };
+public:
+    Stage2_Query_Radius(int my_mode, double my_radius) : mode(my_mode), radius(my_radius)
+    {
+    }
 
-// class Stage2_QR
-// {
-// private:
-// public:
-//     double resolution = 1024; // initial resolution, actually, this is the height of point cloud
-//     double search_radius = 2; // initial search radius for query radius in kdtree
+    void run(Pipeline_Object &pipeline_obj)
+    {
 
-//     void run(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &prev_cloud,
-//              const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &next_cloud,
-//              std::vector<int> &matching_table);
-// };
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr ds_prev_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr ds_next_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
-// class Stage2_CFDS
-// {
-// private:
-// public:
-//     double resolution = 1024; // initial resolution, actually, this is the height of point cloud
-//     double magnificant = 1.5; // magnificant * nn_dist will be the search radius of CFDS
+        if (mode == 1)
+        {
+            ds_prev_cloud = pipeline_obj.ds1_prev_cloud;
+            ds_next_cloud = pipeline_obj.ds1_next_cloud;
+        }
+        else if (mode == 2)
+        {
+            ds_prev_cloud = pipeline_obj.ds2_prev_cloud;
+            ds_next_cloud = pipeline_obj.ds2_next_cloud;
+        }
 
-//     void run(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &prev_cloud,
-//              const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &next_cloud,
-//              std::vector<int> &matching_table);
-// };
+        double utility_alpha = 0.000511936;
+        double utility_beta = 0.000225527;
+        double utility_gamma = 0.00721688;
+
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr prev_cloud_rescale(new pcl::PointCloud<pcl::PointXYZRGB>);
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr next_cloud_rescale(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+        prev_cloud_rescale->points = ds_prev_cloud->points;
+        next_cloud_rescale->points = ds_next_cloud->points;
+
+        for (int idx = 0; idx < prev_cloud_rescale->points.size(); idx++)
+        {
+            prev_cloud_rescale->points[idx].r = (int)(1.0 * (utility_beta / utility_alpha) * (int)prev_cloud_rescale->points[idx].r);
+            prev_cloud_rescale->points[idx].g = (int)(1.0 * (utility_beta / utility_alpha) * (int)prev_cloud_rescale->points[idx].g);
+            prev_cloud_rescale->points[idx].b = (int)(1.0 * (utility_beta / utility_alpha) * (int)prev_cloud_rescale->points[idx].b);
+        }
+
+        for (int idx = 0; idx < next_cloud_rescale->points.size(); idx++)
+        {
+            next_cloud_rescale->points[idx].r = (int)(1.0 * (utility_beta / utility_alpha) * (int)next_cloud_rescale->points[idx].r);
+            next_cloud_rescale->points[idx].g = (int)(1.0 * (utility_beta / utility_alpha) * (int)next_cloud_rescale->points[idx].g);
+            next_cloud_rescale->points[idx].b = (int)(1.0 * (utility_beta / utility_alpha) * (int)next_cloud_rescale->points[idx].b);
+        }
+
+        ds_prev_cloud = prev_cloud_rescale;
+        ds_next_cloud = next_cloud_rescale;
+
+        pcl::search::KdTree<pcl::PointXYZRGB> prev_kdtree;
+        prev_kdtree.setInputCloud(ds_prev_cloud);
+
+        std::vector<int> matched_times;
+        for (int idx = 0; idx < ds_prev_cloud->points.size() + 2; idx++)
+        {
+            matched_times.push_back(0);
+        }
+
+        // will save downsample point cloud match to another downsample point cloud
+        for (int idx = 0; idx < ds_next_cloud->points.size() + 2; idx++)
+        {
+            pipeline_obj.matching_table.push_back(-1);
+        }
+
+        for (int idx = 0; idx < ds_next_cloud->points.size() + 2; idx++)
+        {
+            std::vector<int> prev_pointIdxRadiusSearch;
+            std::vector<float> prev_pointRadiusSquaredDistance;
+
+            prev_kdtree.radiusSearchT(ds_next_cloud->points[idx], radius + 0.01f, prev_pointIdxRadiusSearch, prev_pointRadiusSquaredDistance);
+
+            if (prev_pointIdxRadiusSearch.size() == 0)
+            { // just use "searchPoint" to avoid access struct again
+                pipeline_obj.matching_table[idx] = -1;
+                continue;
+            }
+
+            double total_dist = -1.0;
+            int match_point_index = prev_pointIdxRadiusSearch[0];
+            pipeline_obj.matching_table[idx] = prev_pointIdxRadiusSearch[0];
+
+            for (int i = 0; i < prev_pointIdxRadiusSearch.size(); i++)
+            {
+                // std::cout << (int)searchPoint.r << "   " << (int)(*prev_cloud)[prev_pointIdxRadiusSearch[i]].r << "  " << ((int)searchPoint.r - (int)(*prev_cloud)[prev_pointIdxRadiusSearch[i]].r) * ((int)searchPoint.r - (int)(*prev_cloud)[prev_pointIdxRadiusSearch[i]].r) << std::endl;
+                // std::cout << (int)searchPoint.g << "   " << (int)(*prev_cloud)[prev_pointIdxRadiusSearch[i]].g << "  " << ((int)searchPoint.g - (int)(*prev_cloud)[prev_pointIdxRadiusSearch[i]].g) * ((int)searchPoint.g - (int)(*prev_cloud)[prev_pointIdxRadiusSearch[i]].g) << std::endl;
+                // std::cout << (int)searchPoint.b << "   " << (int)(*prev_cloud)[prev_pointIdxRadiusSearch[i]].b << "  " << ((int)searchPoint.b - (int)(*prev_cloud)[prev_pointIdxRadiusSearch[i]].b) * ((int)searchPoint.b - (int)(*prev_cloud)[prev_pointIdxRadiusSearch[i]].b) << std::endl;
+                double cur_color_dist = sqrt(((int)ds_next_cloud->points[idx].r - (int)(*ds_prev_cloud)[prev_pointIdxRadiusSearch[i]].r) * ((int)ds_next_cloud->points[idx].r - (int)(*ds_prev_cloud)[prev_pointIdxRadiusSearch[i]].r) +
+                                             ((int)ds_next_cloud->points[idx].g - (int)(*ds_prev_cloud)[prev_pointIdxRadiusSearch[i]].g) * ((int)ds_next_cloud->points[idx].g - (int)(*ds_prev_cloud)[prev_pointIdxRadiusSearch[i]].g) +
+                                             ((int)ds_next_cloud->points[idx].b - (int)(*ds_prev_cloud)[prev_pointIdxRadiusSearch[i]].b) * ((int)ds_next_cloud->points[idx].b - (int)(*ds_prev_cloud)[prev_pointIdxRadiusSearch[i]].b));
+                double cur_total_dist = utility_alpha * sqrt(prev_pointRadiusSquaredDistance[i]) + utility_beta * cur_color_dist + utility_gamma * matched_times[prev_pointIdxRadiusSearch[i]];
+                // utility_alpha * sqrt(prev_pointRadiusSquaredDistance[i]) + utility_beta * cur_color_dist + utility_gamma * matched_times[prev_pointIdxRadiusSearch[i]]
+
+                // std::cout << cur_color_dist << std::endl
+                //           << std::endl;
+
+                if (total_dist < 0 || total_dist - cur_total_dist > 0.0001)
+                {
+                    total_dist = cur_total_dist;
+                    pipeline_obj.matching_table[idx] = prev_pointIdxRadiusSearch[i];
+                }
+                else if (abs(total_dist - cur_total_dist) < 0.0001 && match_point_index > prev_pointIdxRadiusSearch[i])
+                {
+                    pipeline_obj.matching_table[idx] = prev_pointIdxRadiusSearch[i];
+                }
+            }
+            matched_times[pipeline_obj.matching_table[idx]] += 1;
+        }
+
+        if (_next != NULL)
+        {
+            _next->run(pipeline_obj);
+        }
+    }
+};

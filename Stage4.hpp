@@ -1,13 +1,62 @@
 // Prediction
 
-class Stage4_Cube_Estimation : public Stage
+class Stage4_Point_Based : public Stage
+{
+private:
+    int mode; // 1 for ds1_point_cloud, 2 for ds2_point_cloud
+
+public:
+    Stage4_Point_Based(int my_mode) : mode(my_mode)
+    {
+    }
+
+    void run(Pipeline_Object &pipeline_obj)
+    {
+
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr prev_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr next_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+        if (mode == 1)
+        {
+            prev_cloud = pipeline_obj.ds1_prev_cloud;
+            next_cloud = pipeline_obj.ds1_next_cloud;
+        }
+        else if (mode == 2)
+        {
+            prev_cloud = pipeline_obj.ds2_prev_cloud;
+            next_cloud = pipeline_obj.ds2_next_cloud;
+        }
+
+        double interpolate_a = pipeline_obj.temporal_index;
+        double interpolate_b = 1 - pipeline_obj.temporal_index;
+
+        for (int idx = 0; idx < next_cloud->points.size(); ++idx)
+        {
+            pcl::PointXYZRGB interpolate_point;
+            interpolate_point.x = (int)next_cloud->points[idx].x + pipeline_obj.temporal_index * pipeline_obj.motion_estimation[idx][0];
+            interpolate_point.y = (int)next_cloud->points[idx].y + pipeline_obj.temporal_index * pipeline_obj.motion_estimation[idx][1];
+            interpolate_point.z = (int)next_cloud->points[idx].z + pipeline_obj.temporal_index * pipeline_obj.motion_estimation[idx][2];
+            interpolate_point.r = (int)next_cloud->points[idx].r + pipeline_obj.temporal_index * pipeline_obj.motion_estimation[idx][3];
+            interpolate_point.g = (int)next_cloud->points[idx].g + pipeline_obj.temporal_index * pipeline_obj.motion_estimation[idx][4];
+            interpolate_point.b = (int)next_cloud->points[idx].b + pipeline_obj.temporal_index * pipeline_obj.motion_estimation[idx][5];
+            pipeline_obj.predict_point_cloud->push_back(interpolate_point);
+        }
+
+        if (_next != NULL)
+        {
+            _next->run(pipeline_obj);
+        }
+    }
+};
+
+class Stage4_Cube_Based : public Stage
 {
 private:
     int mode; // 1 for ds1_point_cloud, 2 for ds2_point_cloud
     int iterate_round;
 
 public:
-    Stage4_Cube_Estimation(int my_mode, int my_iterate_round) : mode(my_mode), iterate_round(my_iterate_round)
+    Stage4_Cube_Based(int my_mode, int my_iterate_round) : mode(my_mode), iterate_round(my_iterate_round)
     {
     }
 
@@ -307,46 +356,191 @@ public:
     }
 };
 
-// class Stage4_PB // point based
-// {
-// private:
-// public:
-//     double pipeline_obj.resolution = 1024; // initial pipeline_obj.resolution, actually, this is the height of point cloud
-//     double t = 0.5            // the interpolate value, 0 < t < 1
+class Stage4_Neighboring_Based : public Stage
+{
+private:
+    int mode; // 1 for ds1_point_cloud, 2 for ds2_point_cloud
 
-//         void run(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &prev_cloud,
-//             const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &next_cloud,
-//             const std::vector<std::vector<int>> &motion_estimation,
-//             pcl::PointCloud<pcl::PointXYZRGB>::Ptr &predict_point_cloud, );
-// };
+public:
+    Stage4_Neighboring_Based(int my_mode) : mode(my_mode)
+    {
+    }
 
-// class Stage4_CB // cube based
-// {
-// private:
-// public:
-//     double pipeline_obj.resolution = 1024; // initial pipeline_obj.resolution, actually, this is the height of point cloud
-//     double pipeline_obj.cube_length = 128;
-//     int iteration_round = 1;
-//     double t = 0.5 // the interpolate value, 0 < t < 1
+    void run(Pipeline_Object &pipeline_obj)
+    {
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr prev_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr next_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
-//         void
-//         run(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &prev_cloud,
-//             const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &next_cloud,
-//             const std::vector<std::vector<int>> &motion_estimation,
-//             pcl::PointCloud<pcl::PointXYZRGB>::Ptr &predict_point_cloud, );
-// };
+        if (mode == 1)
+        {
+            prev_cloud = pipeline_obj.ds1_prev_cloud;
+            next_cloud = pipeline_obj.ds1_next_cloud;
+        }
+        else if (mode == 2)
+        {
+            prev_cloud = pipeline_obj.ds2_prev_cloud;
+            next_cloud = pipeline_obj.ds2_next_cloud;
+        }
 
-// class Stage4_NB // Neighboring based
-// {
-// private:
-// public:
-//     double pipeline_obj.resolution = 1024; // initial pipeline_obj.resolution, actually, this is the height of point cloud
-//     double pipeline_obj.cube_length = 128;
-//     double t = 0.5 // the interpolate value, 0 < t < 1
+        std::map<MyPoint, std::vector<int>, MyPointCompare> ds_block_list; // key: point xyz, value: query point index
 
-//         void
-//         run(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &prev_cloud,
-//             const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &next_cloud,
-//             const std::vector<std::vector<int>> &motion_estimation,
-//             pcl::PointCloud<pcl::PointXYZRGB>::Ptr &predict_point_cloud, );
-// };
+        for (int x = pipeline_obj.cube_length / 2; x < pipeline_obj.resolution; x += pipeline_obj.cube_length)
+        {
+            for (int y = pipeline_obj.cube_length / 2; y < pipeline_obj.resolution; y += pipeline_obj.cube_length)
+            {
+                for (int z = pipeline_obj.cube_length / 2; z < pipeline_obj.resolution; z += pipeline_obj.cube_length)
+                {
+                    ds_block_list[MyPoint(x, y, z)] = std::vector<int>();
+                }
+            }
+        }
+
+        for (int w = 0; w < next_cloud->points.size(); w++)
+        {
+            ds_block_list[MyPoint(find_center(next_cloud->points[w].x, pipeline_obj.cube_length), find_center(next_cloud->points[w].y, pipeline_obj.cube_length), find_center(next_cloud->points[w].z, pipeline_obj.cube_length))].push_back(w);
+        }
+
+        std::vector<MyPoint> non_empty_block_center; // save those center points which query points > 10
+
+        for (int x = pipeline_obj.cube_length / 2; x < pipeline_obj.resolution; x += pipeline_obj.cube_length)
+        {
+            for (int y = pipeline_obj.cube_length / 2; y < pipeline_obj.resolution; y += pipeline_obj.cube_length)
+            {
+                for (int z = pipeline_obj.cube_length / 2; z < pipeline_obj.resolution; z += pipeline_obj.cube_length)
+                {
+                    if (ds_block_list[MyPoint(x, y, z)].size() == 0)
+                        continue;
+
+                    non_empty_block_center.push_back(MyPoint(x, y, z));
+                }
+            }
+        }
+
+        // block_list will use in prediction
+        std::map<MyPoint, std::vector<int>, MyPointCompare> block_list; // key: point xyz, value: query point index
+
+        for (int x = pipeline_obj.cube_length / 2; x < pipeline_obj.resolution; x += pipeline_obj.cube_length)
+        {
+            for (int y = pipeline_obj.cube_length / 2; y < pipeline_obj.resolution; y += pipeline_obj.cube_length)
+            {
+                for (int z = pipeline_obj.cube_length / 2; z < pipeline_obj.resolution; z += pipeline_obj.cube_length)
+                {
+                    block_list[MyPoint(x, y, z)] = std::vector<int>();
+                }
+            }
+        }
+
+        for (int w = 0; w < next_cloud->points.size(); w++)
+        {
+            block_list[MyPoint(find_center(next_cloud->points[w].x, pipeline_obj.cube_length), find_center(next_cloud->points[w].y, pipeline_obj.cube_length), find_center(next_cloud->points[w].z, pipeline_obj.cube_length))].push_back(w);
+        }
+
+        std::vector<std::vector<int>> origin_adjacent_center;
+        for (int i = 0; i < non_empty_block_center.size(); i++)
+        {
+            std::vector<int> temp;
+
+            // first push the block itself into the vector
+            temp.push_back(i);
+            for (int j = 0; j < non_empty_block_center.size(); j++)
+            {
+                if ((non_empty_block_center[i].x + (pipeline_obj.cube_length + 1) > non_empty_block_center[j].x && non_empty_block_center[i].x - (pipeline_obj.cube_length + 1) < non_empty_block_center[j].x) &&
+                    (non_empty_block_center[i].y + (pipeline_obj.cube_length + 1) > non_empty_block_center[j].y && non_empty_block_center[i].y - (pipeline_obj.cube_length + 1) < non_empty_block_center[j].y) &&
+                    (non_empty_block_center[i].z + (pipeline_obj.cube_length + 1) > non_empty_block_center[j].z && non_empty_block_center[i].z - (pipeline_obj.cube_length + 1) < non_empty_block_center[j].z))
+                {
+                    temp.push_back(j);
+                }
+            }
+            origin_adjacent_center.push_back(temp);
+        }
+
+        for (int i = 0; i < non_empty_block_center.size(); i++)
+        {
+
+            int x = non_empty_block_center[i].x;
+            int y = non_empty_block_center[i].y;
+            int z = non_empty_block_center[i].z;
+
+            for (int idx = 0; idx < block_list[MyPoint(x, y, z)].size(); idx++)
+            {
+                // below two should be same size, the final motion should be "sum of each element of two vector muitiply together" and "divide by sum of coe"
+                std::vector<double> coe_list;                 // size at most 27
+                std::vector<std::vector<double>> motion_list; // size at most 27
+
+                double center_x = 0;
+                double center_y = 0;
+                double center_z = 0;
+
+                for (int j = 0; j < origin_adjacent_center[i].size(); j++)
+                {
+                    // calculate coe
+                    double volumn;
+
+                    volumn = abs((non_empty_block_center[origin_adjacent_center[i][j]].x - next_cloud->points[block_list[MyPoint(x, y, z)][idx]].x) *
+                                 (non_empty_block_center[origin_adjacent_center[i][j]].y - next_cloud->points[block_list[MyPoint(x, y, z)][idx]].y) *
+                                 (non_empty_block_center[origin_adjacent_center[i][j]].z - next_cloud->points[block_list[MyPoint(x, y, z)][idx]].z));
+
+                    if (volumn != 0)
+                    {
+                        coe_list.push_back(1.0 / volumn);
+                    }
+                    else
+                    {
+                        coe_list.push_back(999999.0);
+                    }
+
+                    motion_list.push_back(pipeline_obj.non_empty_block_vector[origin_adjacent_center[i][j]]);
+                }
+
+                // calcuate sum of coe_list
+                double sum = 0;
+                for (int j = 0; j < coe_list.size(); j++)
+                {
+                    sum += coe_list[j];
+                }
+
+                pcl::PointXYZRGB interpolate_point;
+                double molecular_x = 0;
+                for (int j = 0; j < coe_list.size(); j++)
+                {
+                    molecular_x += coe_list[j] * motion_list[j][0];
+                }
+
+                double molecular_y = 0;
+                for (int j = 0; j < coe_list.size(); j++)
+                {
+                    molecular_y += coe_list[j] * motion_list[j][1];
+                }
+
+                double molecular_z = 0;
+                for (int j = 0; j < coe_list.size(); j++)
+                {
+                    molecular_z += coe_list[j] * motion_list[j][2];
+                }
+
+                interpolate_point.x = (int)next_cloud->points[block_list[MyPoint(x, y, z)][idx]].x - molecular_x / sum;
+                interpolate_point.y = (int)next_cloud->points[block_list[MyPoint(x, y, z)][idx]].y - molecular_y / sum;
+                interpolate_point.z = (int)next_cloud->points[block_list[MyPoint(x, y, z)][idx]].z - molecular_z / sum;
+                interpolate_point.r = (int)next_cloud->points[block_list[MyPoint(x, y, z)][idx]].r - pipeline_obj.non_empty_block_vector[i][3];
+                interpolate_point.g = (int)next_cloud->points[block_list[MyPoint(x, y, z)][idx]].g - pipeline_obj.non_empty_block_vector[i][4];
+                interpolate_point.b = (int)next_cloud->points[block_list[MyPoint(x, y, z)][idx]].b - pipeline_obj.non_empty_block_vector[i][5];
+                if (interpolate_point.x == interpolate_point.x || interpolate_point.y == interpolate_point.y || interpolate_point.z == interpolate_point.z)
+                { // test if nan
+                    pipeline_obj.predict_point_cloud->push_back(interpolate_point);
+                }
+                else
+                {
+                    interpolate_point.x = (int)next_cloud->points[block_list[MyPoint(x, y, z)][idx]].x;
+                    interpolate_point.y = (int)next_cloud->points[block_list[MyPoint(x, y, z)][idx]].y;
+                    interpolate_point.z = (int)next_cloud->points[block_list[MyPoint(x, y, z)][idx]].z;
+                    pipeline_obj.predict_point_cloud->push_back(interpolate_point);
+                }
+            }
+        }
+
+        if (_next != NULL)
+        {
+            _next->run(pipeline_obj);
+        }
+    }
+};

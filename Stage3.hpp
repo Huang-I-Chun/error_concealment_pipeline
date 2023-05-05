@@ -101,27 +101,63 @@ public:
     }
 };
 
-// class Stage3_Point_Estimation
-// {
-// private:
-// public:
-//     double resolution = 1024; // initial resolution, actually, this is the height of point cloud
+class Stage3_Point_Estimation : public Stage
+{
+private:
+    int mode; // 1 for ds1_point_cloud, 2 for ds2_point_cloud
 
-//     void run(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &prev_cloud,
-//              const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &next_cloud,
-//              const std::vector<int> &matching_table,
-//              std::vector<std::vector<int>> &motion_estimation, );
-// };
+public:
+    Stage3_Point_Estimation(int my_mode) : mode(my_mode)
+    {
+    }
 
-// class Stage3_Cube_Estimation
-// {
-// private:
-// public:
-//     double resolution = 1024; // initial resolution, actually, this is the height of point cloud
-//     double cube_length = 128;
+    void run(Pipeline_Object &pipeline_obj)
+    {
 
-//     void run(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &prev_cloud,
-//              const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &next_cloud,
-//              const std::vector<int> &matching_table,
-//              std::vector<std::vector<int>> &motion_estimation, );
-// };
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr ds_prev_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr ds_next_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+        if (mode == 1)
+        {
+            ds_prev_cloud = pipeline_obj.ds1_prev_cloud;
+            ds_next_cloud = pipeline_obj.ds1_next_cloud;
+        }
+        else if (mode == 2)
+        {
+            ds_prev_cloud = pipeline_obj.ds2_prev_cloud;
+            ds_next_cloud = pipeline_obj.ds2_next_cloud;
+        }
+
+        // pcl::io::savePLYFileASCII("prev.ply", *ds_prev_cloud);
+        // pcl::io::savePLYFileASCII("next.ply", *ds_next_cloud);
+
+        for (int idx = 0; idx < ds_next_cloud->points.size(); ++idx)
+        {
+            std::vector<double> motion_vector;
+            if (pipeline_obj.matching_table[idx] != -1)
+            {
+                motion_vector.push_back(-ds_next_cloud->points[idx].x + ds_prev_cloud->points[pipeline_obj.matching_table[idx]].x);
+                motion_vector.push_back(-ds_next_cloud->points[idx].y + ds_prev_cloud->points[pipeline_obj.matching_table[idx]].y);
+                motion_vector.push_back(-ds_next_cloud->points[idx].z + ds_prev_cloud->points[pipeline_obj.matching_table[idx]].z);
+                motion_vector.push_back(-ds_next_cloud->points[idx].r + ds_prev_cloud->points[pipeline_obj.matching_table[idx]].r);
+                motion_vector.push_back(-ds_next_cloud->points[idx].g + ds_prev_cloud->points[pipeline_obj.matching_table[idx]].g);
+                motion_vector.push_back(-ds_next_cloud->points[idx].b + ds_prev_cloud->points[pipeline_obj.matching_table[idx]].b);
+            }
+            else
+            {
+                motion_vector.push_back(0);
+                motion_vector.push_back(0);
+                motion_vector.push_back(0);
+                motion_vector.push_back(0);
+                motion_vector.push_back(0);
+                motion_vector.push_back(0);
+            }
+            pipeline_obj.motion_estimation.push_back(motion_vector);
+        }
+
+        if (_next != NULL)
+        {
+            _next->run(pipeline_obj);
+        }
+    }
+};
