@@ -1,10 +1,11 @@
 # PC_error_concealment
 
 ## Environment requirement
-cpp library
-cpp point cloud library
-Eigen
-cmake
+Cpp point cloud library (https://pointclouds.org/downloads/),
+
+Eigen (http://eigen.tuxfamily.org/index.php?title=Main_Page#Download),
+
+Cmake (https://cmake.org/install/)
 
 ## How to build the project using cmake
 Compile execution file `Pipeline` under a new folder `build`
