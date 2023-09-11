@@ -34,8 +34,11 @@ Example command:
 python client.py -prev longdress_1051.ply -next longdress_1055.ply -out build/output.ply -pos 0.5
 ```
 `-prev longdress_1051.ply` previous point cloud file we provide
+
 `-next longdress_1055.ply` next point cloud file we provide
+
 `-out build/output.ply` output point cloud file path
+
 `-pos 0.5` means the output file is right at the middle of previous and next frames
 
 ## Different pipeline sample
