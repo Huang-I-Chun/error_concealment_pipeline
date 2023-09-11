@@ -44,8 +44,13 @@ void pipeline(Stage *stages[], Pipeline_Object &pipeline_obj)
     stages[0]->run(pipeline_obj);
 }
 
-int main()
+int main(int argc, char **argv)
 {
+    prev_filename = argv[1];
+    next_filename = argv[2];
+    output_filename = argv[3];
+    temporal_index = atof(argv[4]) * 1.0;
+
     Pipeline_Object my_obj(prev_filename, next_filename, temporal_index, resolution);
 
     // my_stage1, my_stage2, my_stage3, my_stage4, my_stage5
