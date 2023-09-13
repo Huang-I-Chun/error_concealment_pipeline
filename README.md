@@ -8,7 +8,7 @@ Eigen (http://eigen.tuxfamily.org/index.php?title=Main_Page#Download),
 Cmake (https://cmake.org/install/)
 
 ## How to build the project using cmake
-Compile execution file `Pipeline` under a new folder `build`
+Compile executable file `Pipeline` under a new folder `build`
 ```bach
 git clone git@github.com:Hunag-I-Chun/error_concealment_pipeline.git
 cd error_concealment_pipeline
@@ -31,15 +31,18 @@ python client.py -prev PREVIOUS_FRAME_PATH -next NEXT_FRAME_PATH -out OUTPUT_PAT
 
 Example command:
 ```bash
-python client.py -prev longdress_1051.ply -next longdress_1055.ply -out build/output.ply -pos 0.5
+python client.py -prev files/longdress_1051.ply -next files/longdress_1055.ply -out files/output.ply -pos 0.5
 ```
-`-prev longdress_1051.ply` previous point cloud file we provide
+`-prev files/longdress_1051.ply` previous point cloud file we provide
 
-`-next longdress_1055.ply` next point cloud file we provide
+`-next files/longdress_1055.ply` next point cloud file we provide
 
-`-out build/output.ply` output point cloud file path
+`-out files/output.ply` output point cloud file path
 
 `-pos 0.5` means the output file is right at the middle of previous and next frames
+
+The output.ply will look like:
+![output.ply](files/output_illustration.png)
 
 ## Different pipeline sample
 In `error_concealment_pipeline/config.hpp`, we've provided P, B, Q pipeline combinations for your convenience. The current pipeline in use is labeled as "Q." To switch to a different pipeline combination, simply comment or uncomment the relevant lines based on your requirements. Remember that every time you make changes to either the .hpp or .cpp files, you'll need to rebuild the project.
