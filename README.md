@@ -1,11 +1,17 @@
 # PC_error_concealment
 
 ## Environment requirement
-Cpp point cloud library (https://pointclouds.org/downloads/),
+Testing Environment Version:
+Ubuntu 20.04
+Cmake 3.23.2 (https://cmake.org/install/)
+Cpp point cloud library 1.10.0 (https://pointclouds.org/downloads/),
 
-Eigen (http://eigen.tuxfamily.org/index.php?title=Main_Page#Download),
-
-Cmake (https://cmake.org/install/)
+Example install command:
+```bach
+sudo apt update
+sudo apt install cmake g++ make
+sudo apt install libpcl-dev
+```
 
 ## How to build the project using cmake
 Compile executable file `Pipeline` under a new folder `build`
