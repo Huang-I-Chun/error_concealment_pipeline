@@ -6,7 +6,6 @@ find_package(PCL 1.2 REQUIRED)
 
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
-link_directories(error_concealment_pipeline)
 
 add_definitions(${PCL_DEFINITIONS})
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
