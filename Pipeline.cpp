@@ -24,7 +24,7 @@
 #include <pcl/search/kdtree.h>
 #include <pcl/filters/voxel_grid.h>
 
-#include "utility.hpp"
+// #include "utility.hpp"
 #include "base.hpp"
 #include "Stage1.hpp"
 #include "Stage2.hpp"

@@ -1,3 +1,15 @@
+#ifndef BASE_HPP
+#define BASE_HPP
+#include <Eigen/Core>
+#include <pcl/io/ply_io.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/impl/point_types.hpp>
+#include <pcl/point_cloud.h>
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/search/kdtree.h>
+#include <pcl/filters/voxel_grid.h>
+
 class Pipeline_Object
 {
 public:
@@ -76,3 +88,4 @@ public:
         _next = nextstage;
     }
 };
+#endif

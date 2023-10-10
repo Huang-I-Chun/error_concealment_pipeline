@@ -40,7 +40,7 @@ python client.py -prev PREVIOUS_FRAME_PATH -next NEXT_FRAME_PATH -out OUTPUT_PAT
 
 Example command:
 ```bash
-python client.py -prev files/longdress_1051.ply -next files/longdress_1055.ply -out files/output.ply -pos 0.5
+python client.py -prev files/longdress_1051.ply -next files/longdress_1055.ply -out output.ply -pos 0.5
 ```
 `-prev files/longdress_1051.ply` previous point cloud file we provide
 
